@@ -1,0 +1,10 @@
+header {
+  background-color: #FFFFFF;
+  background-image: url("../images/logo.svg");
+  background-repeat: no-repeat;
+  background-position: 20px center;
+  border-bottom: 1px solid #CCCCCC;
+  box-sizing: border-box;
+  height: 70px;
+  width: 100%;
+}
