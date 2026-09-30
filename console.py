@@ -1,122 +1,136 @@
 #!/usr/bin/python3
-"""The simple command interpreter for the AirBnB clone."""
-
+"""Entry point of the AirBnB clone command interpreter."""
 import cmd
 import shlex
-
 from models import storage
-from models.amenity import Amenity
 from models.base_model import BaseModel
+from models.user import User
+from models.state import State
 from models.city import City
+from models.amenity import Amenity
 from models.place import Place
 from models.review import Review
-from models.state import State
-from models.user import User
 
 
 class HBNBCommand(cmd.Cmd):
-    """Accept commands for creating and managing model objects."""
+    """Command interpreter to manage AirBnB objects."""
 
     prompt = "(hbnb) "
-    classes = {
-        "BaseModel": BaseModel,
-        "User": User,
-        "State": State,
-        "City": City,
-        "Amenity": Amenity,
-        "Place": Place,
-        "Review": Review,
-    }
+    classes = {"BaseModel": BaseModel, "User": User, "State": State,
+               "City": City, "Amenity": Amenity, "Place": Place,
+               "Review": Review}
 
-    def do_quit(self, line):
-        """Quit the program."""
+    def do_quit(self, arg):
+        """Quit command to exit the program
+        """
         return True
 
-    def do_EOF(self, line):
-        """Quit when the user presses Ctrl-D."""
+    def do_EOF(self, arg):
+        """EOF signal (Ctrl+D) to exit the program
+        """
         print()
         return True
 
     def emptyline(self):
-        """Do nothing when the user enters a blank line."""
+        """Do nothing when an empty line is entered."""
         pass
 
-    def do_create(self, line):
-        """Create a model: create User."""
-        words = shlex.split(line)
-        if not words:
-            print("** class name missing **")
-            return
-        if words[0] not in self.classes:
-            print("** class doesn't exist **")
-            return
-        print(self.classes[words[0]]().id)
+    @staticmethod
+    def _split(arg):
+        """Split arg into words, keeping double-quoted strings together."""
+        try:
+            return shlex.split(arg)
+        except ValueError:
+            return arg.split()
 
-    def do_show(self, line):
-        """Show one model: show User id."""
-        words = shlex.split(line)
-        if not words:
+    def _check(self, arg, need_id=True):
+        """Validate class name and id; print errors and return args."""
+        args = self._split(arg)
+        if not args:
             print("** class name missing **")
-        elif words[0] not in self.classes:
+            return None
+        if args[0] not in self.classes:
             print("** class doesn't exist **")
-        elif len(words) < 2:
+            return None
+        if not need_id:
+            return args
+        if len(args) < 2:
             print("** instance id missing **")
-        else:
-            obj = storage.all().get("{}.{}".format(words[0], words[1]))
-            print(obj if obj else "** no instance found **")
-
-    def do_destroy(self, line):
-        """Delete one model: destroy User id."""
-        words = shlex.split(line)
-        if not words:
-            print("** class name missing **")
-        elif words[0] not in self.classes:
-            print("** class doesn't exist **")
-        elif len(words) < 2:
-            print("** instance id missing **")
-        else:
-            key = "{}.{}".format(words[0], words[1])
-            if key not in storage.all():
-                print("** no instance found **")
-            else:
-                del storage.all()[key]
-                storage.save()
-
-    def do_all(self, line):
-        """List objects: all or all User."""
-        words = shlex.split(line)
-        if words and words[0] not in self.classes:
-            print("** class doesn't exist **")
-            return
-        objects = storage.all().values()
-        if words:
-            objects = [obj for obj in objects
-                       if obj.__class__.__name__ == words[0]]
-        print([str(obj) for obj in objects])
-
-    def do_update(self, line):
-        """Update a model: update User id name value."""
-        words = shlex.split(line)
-        if not words:
-            print("** class name missing **")
-        elif words[0] not in self.classes:
-            print("** class doesn't exist **")
-        elif len(words) < 2:
-            print("** instance id missing **")
-        elif "{}.{}".format(words[0], words[1]) not in storage.all():
+            return None
+        if "{}.{}".format(args[0], args[1]) not in storage.all():
             print("** no instance found **")
-        elif len(words) < 3:
+            return None
+        return args
+
+    def do_create(self, arg):
+        """Create a new instance, save it and print its id
+        Usage: create <class name>
+        """
+        args = self._check(arg, need_id=False)
+        if args is None:
+            return
+        obj = self.classes[args[0]]()
+        obj.save()
+        print(obj.id)
+
+    def do_show(self, arg):
+        """Print the string representation of an instance
+        Usage: show <class name> <id>
+        """
+        args = self._check(arg)
+        if args is None:
+            return
+        print(storage.all()["{}.{}".format(args[0], args[1])])
+
+    def do_destroy(self, arg):
+        """Delete an instance and save the change
+        Usage: destroy <class name> <id>
+        """
+        args = self._check(arg)
+        if args is None:
+            return
+        del storage.all()["{}.{}".format(args[0], args[1])]
+        storage.save()
+
+    def do_all(self, arg):
+        """Print all instances, optionally filtered by class name
+        Usage: all [<class name>]
+        """
+        args = self._split(arg)
+        if args and args[0] not in self.classes:
+            print("** class doesn't exist **")
+            return
+        print([str(obj) for obj in storage.all().values()
+               if not args or obj.__class__.__name__ == args[0]])
+
+    @staticmethod
+    def _cast(obj, name, value):
+        """Cast value to the type of the existing attribute if numeric."""
+        current = getattr(obj, name, None)
+        if type(current) in (int, float):
+            try:
+                return type(current)(value)
+            except ValueError:
+                return value
+        return value
+
+    def do_update(self, arg):
+        """Update an instance attribute and save the change
+        Usage: update <class name> <id> <attribute name> "<value>"
+        """
+        args = self._check(arg)
+        if args is None:
+            return
+        if len(args) < 3:
             print("** attribute name missing **")
-        elif len(words) < 4:
+            return
+        if len(args) < 4:
             print("** value missing **")
-        else:
-            obj = storage.all()["{}.{}".format(words[0], words[1])]
-            value = words[3]
-            if value.replace(".", "", 1).isdigit():
-                value = float(value) if "." in value else int(value)
-            setattr(obj, words[2], value)
-            obj.save()
+            return
+        obj = storage.all()["{}.{}".format(args[0], args[1])]
+        setattr(obj, args[2], self._cast(obj, args[2], args[3]))
+        obj.save()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     HBNBCommand().cmdloop()

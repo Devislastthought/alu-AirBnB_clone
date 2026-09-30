@@ -1,5 +1,5 @@
-"""Models package and the single storage object used by the application."""
-
+#!/usr/bin/python3
+"""Package initializer: creates the unique FileStorage instance."""
 from models.engine.file_storage import FileStorage
 
 storage = FileStorage()

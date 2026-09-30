@@ -1,51 +1,46 @@
 #!/usr/bin/python3
-"""Save and reload AirBnB objects in a JSON file."""
-
+"""Module defining FileStorage, the JSON file storage engine."""
 import json
-from datetime import datetime
 
 
 class FileStorage:
-    """Store model dictionaries in file.json and rebuild model objects."""
+    """Serializes instances to a JSON file and back."""
 
     __file_path = "file.json"
     __objects = {}
 
     def all(self):
-        """Return all objects currently in memory."""
-        return self.__objects
+        """Return the dictionary of all stored objects."""
+        return FileStorage.__objects
 
     def new(self, obj):
-        """Add an object to memory using ClassName.id as its key."""
+        """Add obj to the objects dictionary with key <class>.<id>."""
         key = "{}.{}".format(obj.__class__.__name__, obj.id)
-        self.__objects[key] = obj
+        FileStorage.__objects[key] = obj
 
     def save(self):
-        """Write every object to the JSON file."""
-        data = {key: value.to_dict()
-                for key, value in self.__objects.items()}
-        with open(self.__file_path, "w", encoding="utf-8") as file:
-            json.dump(data, file)
+        """Serialize all objects to the JSON file."""
+        data = {key: obj.to_dict()
+                for key, obj in FileStorage.__objects.items()}
+        with open(FileStorage.__file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
 
     def reload(self):
-        """Load objects from file.json when the file exists."""
+        """Deserialize the JSON file to objects if the file exists."""
+        from models.base_model import BaseModel
+        from models.user import User
+        from models.state import State
+        from models.city import City
+        from models.amenity import Amenity
+        from models.place import Place
+        from models.review import Review
+        classes = {"BaseModel": BaseModel, "User": User, "State": State,
+                   "City": City, "Amenity": Amenity, "Place": Place,
+                   "Review": Review}
         try:
-            with open(self.__file_path, "r", encoding="utf-8") as file:
-                data = json.load(file)
+            with open(FileStorage.__file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
         except FileNotFoundError:
             return
-
-        classes = {
-            "BaseModel": "models.base_model.BaseModel",
-            "User": "models.user.User",
-            "State": "models.state.State",
-            "City": "models.city.City",
-            "Amenity": "models.amenity.Amenity",
-            "Place": "models.place.Place",
-            "Review": "models.review.Review",
-        }
-        for value in data.values():
-            class_name = value["__class__"]
-            module_name, object_name = classes[class_name].rsplit(".", 1)
-            module = __import__(module_name, fromlist=[object_name])
-            self.new(getattr(module, object_name)(**value))
+        for key, value in data.items():
+            FileStorage.__objects[key] = classes[value["__class__"]](**value)

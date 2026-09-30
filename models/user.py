@@ -1,11 +1,10 @@
 #!/usr/bin/python3
-"""The User model."""
-
+"""Module defining the User class."""
 from models.base_model import BaseModel
 
 
 class User(BaseModel):
-    """Represent a person using the application."""
+    """Represents a user of the AirBnB clone."""
 
     email = ""
     password = ""

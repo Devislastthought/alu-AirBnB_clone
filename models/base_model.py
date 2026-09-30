@@ -1,17 +1,15 @@
 #!/usr/bin/python3
-"""The common parent class for all AirBnB objects."""
-
-from datetime import datetime
+"""Module defining BaseModel, the parent of all AirBnB clone classes."""
 import uuid
-
+from datetime import datetime
 from models import storage
 
 
 class BaseModel:
-    """Store an object's ID, dates, and shared save/convert behaviour."""
+    """Defines the common attributes and methods for other classes."""
 
     def __init__(self, *args, **kwargs):
-        """Create a new object or rebuild one from a dictionary."""
+        """Initialize a new instance, or re-create one from kwargs."""
         if kwargs:
             for key, value in kwargs.items():
                 if key == "__class__":
@@ -20,26 +18,24 @@ class BaseModel:
                     value = datetime.fromisoformat(value)
                 setattr(self, key, value)
         else:
-            now = datetime.now()
             self.id = str(uuid.uuid4())
-            self.created_at = now
-            self.updated_at = now
+            self.created_at = datetime.now()
+            self.updated_at = self.created_at
             storage.new(self)
 
     def __str__(self):
-        """Return a readable description of this object."""
+        """Return the string [<class name>] (<id>) <__dict__>."""
         return "[{}] ({}) {}".format(
-            self.__class__.__name__, self.id, self.__dict__
-        )
+            self.__class__.__name__, self.id, self.__dict__)
 
     def save(self):
-        """Update the date and save this object to the JSON file."""
+        """Update updated_at with the current datetime and save to file."""
         self.updated_at = datetime.now()
         storage.save()
 
     def to_dict(self):
-        """Return this object's data in a JSON-friendly dictionary."""
-        result = self.__dict__.copy()
+        """Return a dictionary representation of the instance."""
+        result = dict(self.__dict__)
         result["__class__"] = self.__class__.__name__
         result["created_at"] = self.created_at.isoformat()
         result["updated_at"] = self.updated_at.isoformat()

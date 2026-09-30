@@ -1,10 +1,9 @@
 #!/usr/bin/python3
-"""The Amenity model."""
-
+"""Module defining the Amenity class."""
 from models.base_model import BaseModel
 
 
 class Amenity(BaseModel):
-    """Represent a useful feature of a place."""
+    """Represents an amenity."""
 
     name = ""
